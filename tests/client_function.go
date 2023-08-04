@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	ctype   = flag.String("type", "server", "server/client")
 	ipport  = flag.String("ipport", "9999", "TCP port to listen for flows")
 	message = flag.String("message", "test message", "message")
 )
@@ -75,13 +74,5 @@ func recvServiceData(conn net.Conn, write bool) {
 
 func main() {
 	flag.Parse()
-
-	switch *ctype {
-	case "server":
-		testrecvServiceData(*ipport)
-	case "client":
-		testsendServiceData(*ipport, []byte(*message))
-	default:
-		fmt.Printf("Wrong Type!")
-	}
+	testsendServiceData(*ipport, []byte(*message))
 }
