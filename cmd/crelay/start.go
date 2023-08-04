@@ -1,8 +1,12 @@
 package crelay
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.ibm.com/cluster-relay/pkg/relay"
+	api "github.ibm.com/mbg-agent/pkg/api"
 )
 
 // startCmd represents the start command
@@ -17,9 +21,17 @@ var startCmd = &cobra.Command{
 		port, _ := cmd.Flags().GetString("port")
 		gw, _ := cmd.Flags().GetString("gw")
 		target, _ := cmd.Flags().GetString("target")
-
+		m := api.Mbgctl{Id: gw}
 		var rel relay.Relay
-		rel.Init(ip, port, gw, target)
+		if !strings.Contains(target, ":") {
+			// Check the target is a exported service
+			sArr, err := m.GetRemoteService(target)
+			if err != nil {
+				fmt.Printf("Unable to get remote service : %+v", err)
+			}
+			target = sArr[0].Ip
+		}
+		rel.Init(ip, port, target)
 		rel.StartRelay()
 	},
 }
@@ -28,6 +40,6 @@ func init() {
 	rootCmd.AddCommand(startCmd)
 	startCmd.Flags().String("ip", "", "Optional IP address to bind the cluster-relay")
 	startCmd.Flags().String("port", "", "Port to bind the cluster-relay")
-	startCmd.Flags().String("gw", "", "Reachable IP of the  Clusterlink gateway")
-	startCmd.Flags().String("target", "", "Reachable IP:port of the target service through Clusterlink gateway obtained through 'gwctl get service'")
+	startCmd.Flags().String("gw", "", "Name of the Clusterlink gateway control")
+	startCmd.Flags().String("target", "", "Reachable IP:port or gateway service ID of the target service through Clusterlink gateway obtained through 'gwctl get service'")
 }

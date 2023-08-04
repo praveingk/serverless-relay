@@ -29,7 +29,7 @@ type Relay struct {
 	egressFill   bool
 	url          string
 	target       string
-	gw           string
+	gwIP         string
 }
 
 // StartRelay starts the main function of the relay
@@ -51,8 +51,8 @@ func (r *Relay) StartRelay() error {
 			continue
 		}
 		clog.Info("Accept incoming connection from ", ac.RemoteAddr().String())
-		clog.Info("Comparing ", strings.Split(ac.RemoteAddr().String(), ":")[0], r.gw)
-		if strings.Split(ac.RemoteAddr().String(), ":")[0] == r.gw {
+		clog.Info("Comparing ", strings.Split(ac.RemoteAddr().String(), ":")[0], r.gwIP)
+		if strings.Split(ac.RemoteAddr().String(), ":")[0] == r.gwIP {
 			// This is an incoming connection from gateway
 			if r.gatewayConn != nil {
 				clog.Errorln("Preexisting gateway connection still active.")
@@ -262,12 +262,14 @@ func (r *Relay) closeConnection() {
 }
 
 // Init initializes the relay
-func (r *Relay) Init(ip, port, gw, target string) {
+func (r *Relay) Init(ip, port, target string) {
 	r.url = ip + ":" + port
 	r.target = target
-	r.gw = gw
+	r.gwIP = strings.Split(target, ":")[0]
 	r.clientConn = nil
 	r.gatewayConn = nil
 	r.egress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, true)
 	r.ingress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, true)
+	clog.Info("Initializing relay for target ", r.target)
+
 }
