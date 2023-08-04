@@ -13,6 +13,7 @@ import (
 var clog = logrus.WithField("component", "Cluster-Relay")
 var queueSize = 100
 
+var localhost = "127.0.0.1"
 var (
 	maxDataBufferSize = 64 * 1024
 )
@@ -51,8 +52,9 @@ func (r *Relay) StartRelay() error {
 			continue
 		}
 		clog.Info("Accept incoming connection from ", ac.RemoteAddr().String())
-		clog.Info("Comparing ", strings.Split(ac.RemoteAddr().String(), ":")[0], r.gwIP)
-		if strings.Split(ac.RemoteAddr().String(), ":")[0] == r.gwIP {
+		addr := strings.Split(ac.RemoteAddr().String(), ":")[0]
+		clog.Info("Comparing ", addr, " and ", r.gwIP)
+		if addr == r.gwIP || addr == localhost {
 			// This is an incoming connection from gateway
 			if r.gatewayConn != nil {
 				clog.Errorln("Preexisting gateway connection still active.")
@@ -76,17 +78,17 @@ func (r *Relay) StartRelay() error {
 			clog.Info("Got a connection from the client")
 			r.clientConn = ac
 			go r.drainIngress()
-			if r.gatewayConn != nil {
-				// gateway connection already open, Start dispatching
-				break
+			if r.gatewayConn == nil {
+				// If no gateway connection open yet, try reaching target
+				clog.Infof("Trying to reach the target..")
+				conn, err := net.Dial("tcp", r.target)
+				if err != nil {
+					clog.Errorln("Unable to reach target, will be buffering")
+				}
+				r.gatewayConn = conn
 			}
-			// If no gateway connection open yet, try reaching target
-			conn, err := net.Dial("tcp", r.target)
-			if err != nil {
-				clog.Errorln("Unable to reach target")
-			}
-			r.gatewayConn = conn
 			go r.handleEgress()
+			go r.handleIngress()
 		}
 	}
 	return nil
@@ -268,8 +270,8 @@ func (r *Relay) Init(ip, port, target string) {
 	r.gwIP = strings.Split(target, ":")[0]
 	r.clientConn = nil
 	r.gatewayConn = nil
-	r.egress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, true)
-	r.ingress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, true)
+	r.egress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, false)
+	r.ingress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, false)
 	clog.Info("Initializing relay for target ", r.target)
 
 }
