@@ -5,6 +5,6 @@ A Relay maintaining persistent connection between serverless functions and the c
 
    make build
 
-   ./bin/cluster_relay start --port 9000 --gw 10.241.64.5 --target 10.241.64.5:9999
+   ./bin/cluster_relay start --port <portnum> --target <ip:port / Clusterlink service name>
 
-   
+   Refer to [tests/README.md](tests/README.md) for an end-to-end example
