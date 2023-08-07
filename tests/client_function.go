@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"time"
 )
@@ -73,6 +74,8 @@ func recvServiceData(conn net.Conn, write bool) {
 }
 
 func main() {
-	flag.Parse()
-	testsendServiceData(*ipport, []byte(*message))
+	//flag.Parse()
+	ipport := os.Getenv("TARGET_RELAY")
+	message := os.Getenv("MESSAGE")
+	testsendServiceData(ipport, []byte(message))
 }

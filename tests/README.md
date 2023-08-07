@@ -31,9 +31,13 @@ Verify if services are available in either clusters using
     ./bin/cluster_relay start --port 9000 --target crelay-func1
 
 ### Start Client function (in Cluster 1) which connects to crelay1
-    ./bin/client_function --ipport 10.241.64.4:9000 --message "hello"
+    export TARGET_RELAY=10.241.64.4:9000
+    export MESSAGE=hello
+    ./bin/client_function
 
 ### Start Client function (in Cluster 2) which connects to crelay2
-    ./bin/client_function --ipport 10.241.64.5:9000 --message "hi"
+    export TARGET_RELAY=10.241.64.5:9000
+    export MESSAGE=hi
+    ./bin/client_function
 
 Now we must observe that each clientfunction receives the message from the other clientfunction, which ensures the relay is working.
