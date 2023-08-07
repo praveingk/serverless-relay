@@ -20,17 +20,16 @@ var (
 
 // Relay struct defines the properties of the relay
 type Relay struct {
-	gatewayConn  net.Conn
-	clientConn   net.Conn
-	egress       queue.BytesQueue // Message queued to be sent to gateway
-	ingress      queue.BytesQueue // Messages queued to be sent to client
-	egressDrain  sync.Mutex
-	ingressDrain sync.Mutex
-	ingressFill  bool
-	egressFill   bool
-	url          string
-	target       string
-	gwIP         string
+	gatewayConn    net.Conn
+	clientConn     net.Conn
+	egress         queue.BytesQueue // Message queued to be sent to gateway
+	ingress        queue.BytesQueue // Messages queued to be sent to client
+	egressDrain    sync.Mutex
+	ingressDrain   sync.Mutex
+	ingressHandler bool
+	url            string
+	target         string
+	gwIP           string
 }
 
 // StartRelay starts the main function of the relay
@@ -65,9 +64,9 @@ func (r *Relay) StartRelay() error {
 			r.gatewayConn = ac
 			// Check messages queued
 			go r.drainEgress()
-
-			go r.handleIngress()
-
+			if !r.ingressHandler {
+				go r.handleIngress()
+			}
 		} else {
 			// This is an incoming connection from a client
 			if r.clientConn != nil {
@@ -88,7 +87,9 @@ func (r *Relay) StartRelay() error {
 				r.gatewayConn = conn
 			}
 			go r.handleEgress()
-			go r.handleIngress()
+			if !r.ingressHandler {
+				go r.handleIngress()
+			}
 		}
 	}
 	return nil
@@ -153,6 +154,7 @@ func (r *Relay) drainIngress() error {
 
 // Starts to Listen to gateway connection and queue messages/sends them to client connection in ingress
 func (r *Relay) handleIngress() error {
+	r.ingressHandler = true
 	var err error
 	bufData := make([]byte, maxDataBufferSize)
 	lock := false
@@ -166,18 +168,16 @@ func (r *Relay) handleIngress() error {
 		clog.Infof("Read from gateway : %s", string(bufData))
 		if r.clientConn == nil {
 			clog.Infof("Queueing in Ingress")
-			i, err := r.ingress.Push(bufData)
+			_, err := r.ingress.Push(bufData)
 			if err != nil {
-				clog.Info("unable to push to ingress : ", err)
+				clog.Info("Unable to push to ingress : ", err)
 			}
-			clog.Info("Length of ingress queue", i)
 		} else {
 			if !lock {
 				clog.Infof("Locking Ingress Drain from handleIngress")
 				r.ingressDrain.Lock()
 				lock = true
 				clog.Infof("Length of Ingress Queue : %d : This must be 0 ideally", r.ingress.Len())
-
 			}
 			_, err = r.clientConn.Write(bufData[:numBytes])
 			if err != nil {
@@ -192,12 +192,12 @@ func (r *Relay) handleIngress() error {
 		r.ingressDrain.Unlock()
 	}
 	r.closeConnection()
+	r.ingressHandler = false
 	if err == io.EOF {
 		return nil
 	} else {
 		return err
 	}
-
 }
 
 // Starts to Listen to client connection and queue messages/sends them to gateway connection in egress
@@ -215,11 +215,10 @@ func (r *Relay) handleEgress() error {
 		clog.Infof("Read from client : %s", string(bufData))
 		if r.gatewayConn == nil {
 			clog.Infof("Queueing in Egress")
-			i, err := r.egress.Push(bufData)
+			_, err := r.egress.Push(bufData)
 			if err != nil {
 				clog.Info("unable to push to egress : ", err)
 			}
-			clog.Info("Length of egress queue", i)
 		} else {
 			if !lock {
 				clog.Infof("Locking Egress Drain from handleEgress")
@@ -236,9 +235,9 @@ func (r *Relay) handleEgress() error {
 			clog.Infof("Finished Writing to gateway connection")
 		}
 	}
-	if r.gatewayConn != nil {
+	clog.Infof("Lock held = %+v", lock)
+	if lock {
 		clog.Infof("Unlocking Egress Drain from handleEgress")
-
 		r.egressDrain.Unlock()
 	}
 	r.closeConnection()
