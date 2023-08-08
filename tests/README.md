@@ -41,3 +41,7 @@ Verify if services are available in either clusters using
     ./bin/client_function
 
 Now we must observe that each clientfunction receives the message from the other clientfunction, which ensures the relay is working.
+
+You can run the client_function app as a job in IBM Code Engine using quay.io/mcnet/client_function
+
+TODO : Generate scripts to automate launch in IBM Code Engine.
