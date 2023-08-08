@@ -38,6 +38,7 @@ func testrecvServiceData(clusterIn string) {
 }
 
 func testsendServiceData(clusterIn string, data []byte) {
+	log.Printf("Connecting to %s", clusterIn)
 	nodeConn, err := net.Dial("tcp", clusterIn)
 	if err != nil {
 		log.Fatalf("Failed to connect to socket %+v", err)
