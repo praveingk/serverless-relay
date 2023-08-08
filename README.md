@@ -19,7 +19,7 @@ It does the following:
 4) When the relay gets a connection from the client function (egress), it checks if there are no existing client connection, and then accepts it. It drains the ingress queue which contains the buffered messages, then dispatches messages from the gateway connection to the client.
 5) In the previous step, if there is no existing gateway connection existing, it connects to the target remote service of the gateway, and dispatches the client messages to the gateway connection.
 6) When a connection is tore-down from the client, it destroys the connections.
-
+![](cluster-relay.png)
 # Steps to run cluster-relay
 
    make build
