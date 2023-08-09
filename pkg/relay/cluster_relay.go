@@ -52,7 +52,7 @@ func (r *Relay) StartRelay() error {
 		}
 		clog.Info("Accept incoming connection from ", ac.RemoteAddr().String())
 		addr := strings.Split(ac.RemoteAddr().String(), ":")[0]
-		clog.Info("Comparing ", addr, " and ", r.gwIP)
+		clog.Debug("Comparing ", addr, " and ", r.gwIP)
 		if addr == r.gwIP || addr == localhost {
 			// This is an incoming connection from gateway
 			if r.gatewayConn != nil {
@@ -79,7 +79,7 @@ func (r *Relay) StartRelay() error {
 			go r.drainIngress()
 			if r.gatewayConn == nil {
 				// If no gateway connection open yet, try reaching target
-				clog.Infof("Trying to reach the target..")
+				clog.Debug("Trying to reach the target..")
 				conn, err := net.Dial("tcp", r.target)
 				if err != nil {
 					clog.Errorln("Unable to reach target, will be buffering")
@@ -98,27 +98,27 @@ func (r *Relay) StartRelay() error {
 // Starts to emit the messages destined to the gateway
 func (r *Relay) drainEgress() error {
 	r.egressDrain.Lock()
-	clog.Infof("Locking Egress Drain from drainEgress")
+	clog.Debug("Locking Egress Drain from drainEgress")
 
 	var err error
 	for {
 		// Dequeue messages from Egress
 		message, err := r.egress.Pop()
 		if err != nil {
-			clog.Infof("Unlocking Egress Drain from drainEgress")
+			clog.Debug("Unlocking Egress Drain from drainEgress")
 			r.egressDrain.Unlock()
 			return err
 		}
 		// Send to gatewayConn
 		_, err = r.gatewayConn.Write(message)
 		if err != nil {
-			clog.Infof("Drain Egress: Write error %v\n", err)
-			clog.Infof("Unlocking Egress Drain from drainEgress")
+			clog.Debugf("Drain Egress: Write error %v\n", err)
+			clog.Debug("Unlocking Egress Drain from drainEgress")
 			r.egressDrain.Unlock()
 			break
 		}
 	}
-	clog.Infof("Unlocking egress Drain")
+	clog.Debugf("Unlocking egress Drain")
 	r.egressDrain.Unlock()
 	return err
 }
@@ -126,27 +126,27 @@ func (r *Relay) drainEgress() error {
 // Starts to emit the messages destined to the client
 func (r *Relay) drainIngress() error {
 	r.ingressDrain.Lock()
-	clog.Infof("Locking Ingress Drain from drainIngress")
+	clog.Debug("Locking Ingress Drain from drainIngress")
 	var err error
 	for {
 		// Dequeue messages from Ingress
 		message, err := r.ingress.Pop()
 		if err != nil {
-			clog.Infof("Unlocking Ingress Drain from drainIngress")
+			clog.Debug("Unlocking Ingress Drain from drainIngress")
 			r.ingressDrain.Unlock()
 			return err
 		}
 		// Send to clientConn
 		_, err = r.clientConn.Write(message)
 		if err != nil {
-			clog.Infof("Drain Ingres: Write error %v\n", err)
-			clog.Infof("Unlocking Ingress Drain from drainIngress")
+			clog.Debugf("Drain Ingres: Write error %v\n", err)
+			clog.Debug("Unlocking Ingress Drain from drainIngress")
 
 			r.ingressDrain.Unlock()
 			break
 		}
 	}
-	clog.Infof("Unlocking Ingress Drain from drainIngress")
+	clog.Debug("Unlocking Ingress Drain from drainIngress")
 
 	r.ingressDrain.Unlock()
 	return err
@@ -158,37 +158,39 @@ func (r *Relay) handleIngress() error {
 	var err error
 	bufData := make([]byte, maxDataBufferSize)
 	lock := false
-	defer r.gatewayConn.Close()
+	if r.gatewayConn != nil {
+		defer r.gatewayConn.Close()
+	}
 	for {
 		numBytes, err := r.gatewayConn.Read(bufData)
 		if err != nil {
-			clog.Infof("Handle Ingress: Read error %v\n", err)
+			clog.Error("Handle Ingress: Read error ", err)
 			break
 		}
-		clog.Infof("Read from gateway : %s", string(bufData))
+		clog.Debugf("Read from gateway : %s", string(bufData))
 		if r.clientConn == nil {
-			clog.Infof("Queueing in Ingress")
+			clog.Debug("Queueing in Ingress")
 			_, err := r.ingress.Push(bufData)
 			if err != nil {
-				clog.Info("Unable to push to ingress : ", err)
+				clog.Error("Unable to push to ingress : ", err)
 			}
 		} else {
 			if !lock {
-				clog.Infof("Locking Ingress Drain from handleIngress")
+				clog.Debug("Locking Ingress Drain from handleIngress")
 				r.ingressDrain.Lock()
 				lock = true
-				clog.Infof("Length of Ingress Queue : %d : This must be 0 ideally", r.ingress.Len())
+				clog.Debugf("Length of Ingress Queue : %d : This must be 0 ideally", r.ingress.Len())
 			}
 			_, err = r.clientConn.Write(bufData[:numBytes])
 			if err != nil {
-				clog.Infof("Handle Ingress: Write error %v\n", err)
+				clog.Error("Handle Ingress: Write error ", err)
 				break
 			}
-			clog.Infof("Finished Writing to client connection")
+			clog.Debug("Finished Writing to client connection")
 		}
 	}
 	if lock {
-		clog.Infof("Unlocking Ingress Drain from handleIngress")
+		clog.Debug("Unlocking Ingress Drain from handleIngress")
 		r.ingressDrain.Unlock()
 	}
 	r.closeConnection()
@@ -205,39 +207,41 @@ func (r *Relay) handleEgress() error {
 	var err error
 	bufData := make([]byte, maxDataBufferSize)
 	lock := false
-	defer r.clientConn.Close()
+	if r.clientConn != nil {
+		defer r.clientConn.Close()
+	}
 	for {
 		numBytes, err := r.clientConn.Read(bufData)
 		if err != nil {
-			clog.Infof("Handle Egress: Read error %v\n", err)
+			clog.Error("Handle Egress: Read error ", err)
 			break
 		}
-		clog.Infof("Read from client : %s", string(bufData))
+		clog.Debugf("Read from client : %s", string(bufData))
 		if r.gatewayConn == nil {
-			clog.Infof("Queueing in Egress")
+			clog.Debug("Queueing in Egress")
 			_, err := r.egress.Push(bufData)
 			if err != nil {
-				clog.Info("unable to push to egress : ", err)
+				clog.Error("unable to push to egress : ", err)
 			}
 		} else {
 			if !lock {
-				clog.Infof("Locking Egress Drain from handleEgress")
+				clog.Debug("Locking Egress Drain from handleEgress")
 				r.egressDrain.Lock()
 				lock = true
-				clog.Infof("Length of Egress Queue : %d : This must be 0 ideally", r.egress.Len())
+				clog.Debugf("Length of Egress Queue : %d : This must be 0 ideally", r.egress.Len())
 			}
 
 			_, err = r.gatewayConn.Write(bufData[:numBytes])
 			if err != nil {
-				clog.Infof("Handle Egress: Write error %v\n", err)
+				clog.Error("Handle Egress: Write error ", err)
 				break
 			}
-			clog.Infof("Finished Writing to gateway connection")
+			clog.Debug("Finished Writing to gateway connection")
 		}
 	}
 	clog.Infof("Lock held = %+v", lock)
 	if lock {
-		clog.Infof("Unlocking Egress Drain from handleEgress")
+		clog.Debug("Unlocking Egress Drain from handleEgress")
 		r.egressDrain.Unlock()
 	}
 	r.closeConnection()
@@ -251,6 +255,7 @@ func (r *Relay) handleEgress() error {
 
 // Close connections
 func (r *Relay) closeConnection() {
+	clog.Info("Closing Connections")
 	if r.gatewayConn != nil {
 		r.gatewayConn.Close()
 		r.gatewayConn = nil
@@ -263,7 +268,7 @@ func (r *Relay) closeConnection() {
 }
 
 // Init initializes the relay
-func (r *Relay) Init(ip, port, target string) {
+func (r *Relay) Init(ip, port, target string, loglevel logrus.Level) {
 	r.url = ip + ":" + port
 	r.target = target
 	r.gwIP = strings.Split(target, ":")[0]
@@ -272,5 +277,5 @@ func (r *Relay) Init(ip, port, target string) {
 	r.egress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, false)
 	r.ingress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, false)
 	clog.Info("Initializing relay for target ", r.target)
-
+	clog.Logger.SetLevel(loglevel)
 }

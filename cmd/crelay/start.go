@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.ibm.com/cluster-relay/pkg/relay"
 	api "github.ibm.com/mbg-agent/pkg/api"
@@ -21,6 +22,7 @@ var startCmd = &cobra.Command{
 		port, _ := cmd.Flags().GetString("port")
 		gw, _ := cmd.Flags().GetString("gw")
 		target, _ := cmd.Flags().GetString("target")
+		debug, _ := cmd.Flags().GetBool("debug")
 		m := api.Mbgctl{Id: gw}
 		var rel relay.Relay
 		if !strings.Contains(target, ":") {
@@ -31,7 +33,11 @@ var startCmd = &cobra.Command{
 			}
 			target = sArr[0].Ip
 		}
-		rel.Init(ip, port, target)
+		ll := logrus.InfoLevel
+		if debug == true {
+			ll = logrus.DebugLevel
+		}
+		rel.Init(ip, port, target, ll)
 		rel.StartRelay()
 	},
 }
@@ -42,4 +48,5 @@ func init() {
 	startCmd.Flags().String("port", "", "Port to bind the cluster-relay")
 	startCmd.Flags().String("gw", "", "Name of the Clusterlink gateway control")
 	startCmd.Flags().String("target", "", "Reachable IP:port or gateway service ID of the target service through Clusterlink gateway obtained through 'gwctl get service'")
+	startCmd.Flags().Bool("debug", false, "Debug mode with verbose prints")
 }

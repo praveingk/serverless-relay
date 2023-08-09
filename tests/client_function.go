@@ -6,7 +6,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -57,17 +56,13 @@ func testsendServiceData(clusterIn string, data []byte) {
 
 func recvServiceData(conn net.Conn, write bool) {
 	bufData := make([]byte, maxDataBufferSize)
-	for {
+	for i := 0; i < 100; i++ {
 		numBytes, err := conn.Read(bufData)
 		if err != nil {
-			if err == io.EOF {
-				err = nil //Ignore EOF error
-			} else {
-				log.Fatalf("Read error %v\n", err)
-			}
+			fmt.Printf("Read error %v\n", err)
 			break
 		}
-		log.Printf("Received \"%s\" in Socket Connection", bufData[:numBytes])
+		fmt.Printf("Received \"%s\"\n", bufData[:numBytes])
 		if write {
 			conn.Write([]byte("Success from server"))
 		}
