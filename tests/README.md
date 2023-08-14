@@ -2,12 +2,12 @@
 
 ### Start Cluster 1 gateway VM
     sudo setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/mbg
-    mbg start --id "mbg1" --ip 10.241.64.4  --cport 443 --cportLocal 443  --dataplane tcp --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg1.crt --key tests/utils/mtls/mbg1.key --startPolicyEngine=True --deployment vm &
-    mbgctl create --id "mbgctl1" --mbgIP 10.241.64.4:443  --dataplane tcp --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg1.crt --key tests/utils/mtls/mbg1.key
+    mbg start --id "mbg1" --ip 10.241.64.4  --cport 443 --cportLocal 443  --dataplane mtls --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg1.crt --key tests/utils/mtls/mbg1.key --startPolicyEngine=True --deployment vm --profilePort 8000
+    mbgctl create --id "mbgctl1" --mbgIP 10.241.64.4:443  --dataplane mtls --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg1.crt --key tests/utils/mtls/mbg1.key
 
 ### Start Cluster 2 gateway VM
-    mbg start --id "mbg2" --ip 10.241.64.5  --cport 443 --cportLocal 443  --dataplane tcp --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg2.crt --key tests/utils/mtls/mbg2.key --startPolicyEngine=True --deployment vm &
-    mbgctl create --id "mbgctl2" --mbgIP 10.241.64.5:443  --dataplane tcp --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg2.crt --key tests/utils/mtls/mbg2.key
+    mbg start --id "mbg2" --ip 10.241.64.5  --cport 443 --cportLocal 443  --dataplane mtls --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg2.crt --key tests/utils/mtls/mbg2.key --startPolicyEngine=True --deployment vm --profilePort 8000
+    mbgctl create --id "mbgctl2" --mbgIP 10.241.64.5:443  --dataplane mtls --rootCa tests/utils/mtls/ca.crt --certificate tests/utils/mtls/mbg2.crt --key tests/utils/mtls/mbg2.key
 
 ### Connect both the gateways (in gateway 2)
     mbgctl add peer  --id mbg1 --target 10.241.64.4 --port 443

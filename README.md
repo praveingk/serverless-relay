@@ -26,4 +26,4 @@ It does the following:
 
    ./bin/cluster_relay start --port <portnum> --target <ip:port / Clusterlink service name>
 
-   Refer to [tests/README.md](tests/README.md) for an end-to-end example
+   Refer to [tests/README.md](tests/README.md) for an end-to-end example with old CLI, and [tests/README-newgw.md](tests/README-newgw.md) for integration with latest gateway CLI
