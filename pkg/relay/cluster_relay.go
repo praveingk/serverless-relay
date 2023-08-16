@@ -139,11 +139,10 @@ func (r *Relay) drainIngress() error {
 		// Send to clientConn
 		_, err = r.clientConn.Write(message)
 		if err != nil {
-			clog.Debugf("Drain Ingres: Write error %v\n", err)
+			clog.Debugf("Drain Ingress: Write error %v\n", err)
 			clog.Debug("Unlocking Ingress Drain from drainIngress")
-
 			r.ingressDrain.Unlock()
-			break
+			return err
 		}
 	}
 	clog.Debug("Unlocking Ingress Drain from drainIngress")
