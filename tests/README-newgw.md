@@ -6,7 +6,7 @@ make sure controlplane & dataplane are set in "/etc/hosts"
 ### Start Cluster 1 gateway VM
     sudo setcap CAP_NET_BIND_SERVICE=+eip ./bin/dataplane
 
-    ./bin/controlplane start --id "mbg1" --ip 10.241.64.7 --cport 8443 --cportLocal 8443  --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg1.crt --key tests/utils/mtls/mbg1.key --startPolicyEngine=True --observe=True --logFile=True --zeroTrust=False --deployment=vm --profilePort=8000
+    ./bin/controlplane start --id "mbg1" --ip 10.241.64.7 --cport 8443 --cportLocal 8443  --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg1.crt --key demos/utils/mtls/mbg1.key --startPolicyEngine=True --observe=True --logFile=True --zeroTrust=False --rtenv=vm --profilePort=8000
 
     ./bin/dataplane --id mbg1 --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg1.crt --key demos/utils/mtls/mbg1.key --controlplane controlplane:8443 --profilePort=8001
 
@@ -16,9 +16,9 @@ make sure controlplane & dataplane are set in "/etc/hosts"
 
     sudo setcap CAP_NET_BIND_SERVICE=+eip ./bin/dataplane
 
-    ./bin/controlplane start --id "mbg2" --ip 10.241.64.12 --cport 8443 --cportLocal 8443  --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg2.crt --key tests/utils/mtls/mbg2.key --startPolicyEngine=True --observe=True --logFile=True --zeroTrust=False --deployment=vm --profilePort=8000
+    ./bin/controlplane start --id "mbg2" --ip 10.241.64.12 --cport 8443 --cportLocal 8443  --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg2.crt --key demos/utils/mtls/mbg2.key --startPolicyEngine=True --observe=True --logFile=True --zeroTrust=False --rtenv=vm --profilePort=8000
 
-    ./bin/dataplane --id mbg2 --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg2.crt --key tests/utils/mtls/mbg2.key --controlplane controlplane:8443 --profilePort=8001
+    ./bin/dataplane --id mbg2 --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg2.crt --key demos/utils/mtls/mbg2.key --controlplane controlplane:8443 --profilePort=8001
 
     ./bin/gwctl init --id gwctl2 --gwIP 10.241.64.12  --gwPort 443 --dataplane mtls --certca demos/utils/mtls/ca.crt --cert demos/utils/mtls/mbg2.crt --key demos/utils/mtls/mbg2.key
 
@@ -62,3 +62,6 @@ Now we must observe that each clientfunction receives the message from the other
 You can run the client_function app as a job in IBM Code Engine using quay.io/mcnet/client_function
 
 TODO : Generate scripts to automate launch in IBM Code Engine.
+
+
+openssl s_server -accept 3000  -CAfile demos/utils/mtls/ca.crt -cert demos/utils/mtls/mbg2.crt -key demos/utils/mtls/mbg2.key -state -www 
