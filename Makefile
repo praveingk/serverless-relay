@@ -1,4 +1,4 @@
-SW_VERSION ?= latest
+SW_VERSION ?= latest_tls
 IMAGE_ORG ?= mcnet
 
 IMAGE_TAG_BASE ?= quay.io/$(IMAGE_ORG)/client_function
