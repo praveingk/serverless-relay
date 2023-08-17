@@ -16,7 +16,7 @@ FROM alpine:3.18
 
 WORKDIR /
 COPY --from=0  /client/bin/client_function /client_function
-
+COPY ./tests/certs /certs
 RUN apk update && apk add --no-cache iputils curl tcpdump busybox-extras
 
 ENTRYPOINT ["./client_function"]
