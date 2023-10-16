@@ -4,7 +4,7 @@
 
 package main
 
-import "github.ibm.com/cluster-relay/cmd/crelay"
+import "github.com/clusterlink-host-relay/cmd/crelay"
 
 func main() {
 	crelay.Execute()
