@@ -1,10 +1,12 @@
 # cluster-relay
-A Relay maintaining persistent connection between serverless functions and the clusterlink gateways. 
+A Relay maintaining persistent connection between serverless functions. 
 A relay is needed when two clients want to send communicate between each other without having to host a server, and maintaining connections.
 This is especially the case when we want one or more serverless functions/jobs to communicate with each other.
 
 # Why is this needed?
-Currently ClusterLink gateways expect reachability to the destination service which has to receive connections. An application if it wants to connect to a service, it will connect to the GWs and the GW in the destination cluster needs to make a tcp connection with the destination service.
+A serverless job generally doesnt accept incoming connections. Hence, when two serverless jobs needs to communicate with each other, they would need to connect through a central relay/router.
+
+In the context of Clusterlink, currently ClusterLink gateways expect reachability to the destination service which has to receive connections. An application if it wants to connect to a service, it will connect to the GWs and the GW in the destination cluster needs to make a tcp connection with the destination service.
 
 However, when two transient jobs/functions running in serverless need to contact each other over a tcp connection, there is no generic way of doing this assuming the functions do not have/want to expose publicly reachable endpoints. This problem is currently not solved by Clusterlink, since it requires the GW to initiate a connection with one of the functions, which requires at least one of the functions to have a reachable endpoint accepting connections.
 
