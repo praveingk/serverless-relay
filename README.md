@@ -10,22 +10,24 @@ In the context of Clusterlink, currently ClusterLink gateways expect reachabilit
 
 However, when two transient jobs/functions running in serverless need to contact each other over a tcp connection, there is no generic way of doing this assuming the functions do not have/want to expose publicly reachable endpoints. This problem is currently not solved by Clusterlink, since it requires the GW to initiate a connection with one of the functions, which requires at least one of the functions to have a reachable endpoint accepting connections.
 
-# How does cluster-relay solve this?
+# How does serverless-relay solve this?
 
 The serverless-relay runs as a separate process within a gateway VM for each function/job.
 
 It does the following:
 1) Bind and listen to a specific port, for the job/function to connect and send messages to the remote service. The remote service is already discovered by the gateway. 
-2) The relay at one end accepts connection from a client function (egress), and other end accepts/initiates connection to the gateway (ingress).
-3) If a relay gets a connection from the gateway(ingress), it checks if there are no existing gateway connections, and then accepts it. It queues the messages in an ingress queue until client initiates a connection.
-4) When the relay gets a connection from the client function (egress), it checks if there are no existing client connection, and then accepts it. It drains the ingress queue which contains the buffered messages, then dispatches messages from the gateway connection to the client.
-5) In the previous step, if there is no existing gateway connection existing, it connects to the target remote service of the gateway, and dispatches the client messages to the gateway connection.
-6) When a connection is tore-down from the client, it destroys the connections.
+2) The relay at one end accepts connection from a func1, and other end accepts connection from func2. Ideally it should validate the func1 & func2 using their certificates. 
+3) When both funcs connect to the relay, an end-to-end connection is established, and funcs upgrade the connection to mTLS, and communicate with each other.
+
 ![](serverless-relay.png)
 # Steps to run serverless-relay
 
    make build
 
-   ./bin/srelay start --port <portnum> --target <ip:port / service name>
+   ./bin/srelay start --port <portnum> --target <ip:port / func name>
 
    Refer to [tests/README.md](tests/README.md) for an end-to-end example with old CLI, and [tests/README-newgw.md](tests/README-newgw.md) for integration with latest gateway CLI
+
+
+## TODO
+1) Move relay configuration to separate API, e.g. specify addRoute(func1, func2), and deleteRoute(func1,func2). 
