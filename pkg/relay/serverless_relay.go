@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var clog = logrus.WithField("component", "Cluster-Relay")
+var clog = logrus.WithField("component", "Serverless-Relay")
 var queueSize = 100
 
 var localhost = "127.0.0.1"

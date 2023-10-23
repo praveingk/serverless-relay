@@ -1,4 +1,4 @@
-package crelay
+package srelay
 
 import (
 	"fmt"

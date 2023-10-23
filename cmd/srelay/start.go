@@ -1,7 +1,7 @@
-package crelay
+package srelay
 
 import (
-	"github.com/clusterlink-host-relay/pkg/relay"
+	"github.com/serverless-relay/pkg/relay"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +30,8 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.Flags().String("ip", "", "Optional IP address to bind the cluster-relay")
-	startCmd.Flags().String("port", "", "Port to bind the cluster-relay")
+	startCmd.Flags().String("ip", "", "Optional IP address to bind the serverless-relay")
+	startCmd.Flags().String("port", "", "Port to bind the serverless-relay")
 	startCmd.Flags().String("target", "", "Reachable IP:port or gateway service ID of the target service through Clusterlink gateway obtained through 'gwctl get import '")
 	startCmd.Flags().Bool("debug", false, "Debug mode with verbose prints")
 }

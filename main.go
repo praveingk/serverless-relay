@@ -4,8 +4,8 @@
 
 package main
 
-import "github.com/clusterlink-host-relay/cmd/crelay"
+import "github.com/serverless-relay/cmd/srelay"
 
 func main() {
-	crelay.Execute()
+	srelay.Execute()
 }
