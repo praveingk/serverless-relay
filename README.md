@@ -31,11 +31,15 @@ Details :
    ./bin/frelay start --port <portnum>
 
 # Run a test client
+
    export MODE=flock_tls_server
+   
    ./bin/client_function
 
 # Run a test server
+
    export MODE=flock_tls_client
+   
    ./bin/client_function
 
 ## Problem
