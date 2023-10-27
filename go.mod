@@ -9,10 +9,9 @@ require (
 )
 
 require (
+	github.com/clusterlink-net/clusterlink v0.0.0-20231026082552-89d5bee225c1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 )
-
-replace github.ibm.com/mbg-agent => ../mbg-agent-flock
