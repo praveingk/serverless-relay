@@ -5,8 +5,9 @@ IMAGE_TAG_BASE ?= quay.io/$(IMAGE_ORG)/client_function
 IMG ?= $(IMAGE_TAG_BASE):$(SW_VERSION)
 build:
 	@echo "Start go build phase"
-	go build -o ./bin/cluster_relay ./main.go
-	go build -o ./bin/client_function ./tests/client_function.go
+	go build -o ./bin/frelay ./cmd/frelay/frelay.go
+	go build -o ./bin/fr-adm ./cmd/admin/admin.go
+	go build -o ./bin/client_function ./client/client_function.go
 
 docker-build:
 	docker build --progress=plain --rm --tag client_function .

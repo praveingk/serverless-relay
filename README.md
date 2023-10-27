@@ -24,10 +24,18 @@ It does the following:
 
    make build
 
-   ./bin/srelay start --port <portnum> --target <ip:port / func name>
+   ./bin/frelay start --port <portnum>
 
-   Refer to [tests/README.md](tests/README.md) for an end-to-end example with old CLI, and [tests/README-newgw.md](tests/README-newgw.md) for integration with latest gateway CLI
+# Run a test client
+   export MODE=flock_tls_server
+   ./bin/client_function
 
+# Run a test server
+   export MODE=flock_tls_client
+   ./bin/client_function
+
+## Problem
+Forwarding over the TCP socket of the tls connection fails.
 
 ## TODO
 1) Move relay configuration to separate API, e.g. specify addRoute(func1, func2), and deleteRoute(func1,func2). 
