@@ -17,7 +17,19 @@ var (
 	maxDataBufferSize = 64 * 1024
 )
 
-func tcp_client(target string, data []byte) {
+const (
+	clientCert = "client/certs/client.pem"
+	clientKey  = "client/certs/client.key"
+	serverCert = "client/certs/server.pem"
+	serverKey  = "client/certs/server.key"
+
+	clientCert1 = "client/certs/client1.pem"
+	clientKey1  = "client/certs/client1.key"
+	serverCert1 = "client/certs/server1.pem"
+	serverKey1  = "client/certs/server1.key"
+)
+
+func tcpClient(target string, data []byte) {
 	log.Printf("Connecting to %s", target)
 	nodeConn, err := net.Dial("tcp", target)
 	if err != nil {
@@ -50,8 +62,9 @@ func recvServiceData(conn net.Conn, write bool) {
 	}
 }
 
-func tlsClient(target string) {
-	cert, err := tls.LoadX509KeyPair("certs/client.pem", "certs/client.key")
+func tlsClient(target string, server bool) {
+	log.Println("Starting tlsClient..")
+	cert, err := tls.LoadX509KeyPair(clientCert, clientKey)
 	if err != nil {
 		log.Fatalf("server: loadkeys: %s", err)
 	}
@@ -69,7 +82,6 @@ func tlsClient(target string) {
 		fmt.Println(v.Subject)
 	}
 	log.Println("client: handshake: ", state.HandshakeComplete)
-	log.Println("client: mutual: ", state.NegotiatedProtocolIsMutual)
 
 	message := "Hello\n"
 	n, err := io.WriteString(conn, message)
@@ -81,17 +93,39 @@ func tlsClient(target string) {
 	reply := make([]byte, 256)
 	n, err = conn.Read(reply)
 	log.Printf("client: read %q (%d bytes)", string(reply[:n]), n)
-	log.Print("client: exiting")
+
+	log.Printf("Upgrading..")
+	if server {
+		_, err = upgradeToTLSServer(conn.NetConn(), false)
+	} else {
+		_, err = upgradeToTLSClient(conn.NetConn(), false)
+	}
+	if err != nil {
+		return
+	}
 }
 
-func handleTLSDispatch(conn *tls.Conn, data []byte) {
+func dumpConnState(conn *tls.Conn) {
 	state := conn.ConnectionState()
 	for _, v := range state.PeerCertificates {
 		fmt.Println(x509.MarshalPKIXPublicKey(v.PublicKey))
 		fmt.Println(v.Subject)
 	}
 	log.Println("client: handshake: ", state.HandshakeComplete)
-	log.Println("client: mutual: ", state.NegotiatedProtocolIsMutual)
+}
+func handleTLSDispatch(conn *tls.Conn, data []byte) {
+	go recvServiceData(conn, false)
+	var i int64
+	i = 0
+	for {
+		nData := strconv.AppendInt(data, i, 10)
+		conn.Write(nData)
+		time.Sleep(1 * time.Second)
+		i++
+	}
+}
+
+func handleDispatch(conn net.Conn, data []byte) {
 
 	go recvServiceData(conn, false)
 	var i int64
@@ -104,13 +138,24 @@ func handleTLSDispatch(conn *tls.Conn, data []byte) {
 	}
 }
 
-func upgradeToTLSServer(conn net.Conn) (*tls.Conn, error) {
+func upgradeToTLSServer(conn net.Conn, first bool) (*tls.Conn, error) {
 	fmt.Printf("Upgrading the connection to TLS Server\n")
-
-	cert, err := tls.LoadX509KeyPair("certs/client.pem", "certs/client.key")
-	if err != nil {
-		log.Fatalf("server: loadkeys: %s", err)
-		return nil, err
+	var cert tls.Certificate
+	var err error
+	if first {
+		fmt.Printf("Loading %s, %s", serverCert, serverKey)
+		cert, err = tls.LoadX509KeyPair(serverCert, serverKey)
+		if err != nil {
+			log.Fatalf("server: loadkeys: %s", err)
+			return nil, err
+		}
+	} else {
+		fmt.Printf("Loading %s, %s", serverCert1, serverKey1)
+		cert, err = tls.LoadX509KeyPair(serverCert1, serverKey1)
+		if err != nil {
+			log.Fatalf("server: loadkeys: %s", err)
+			return nil, err
+		}
 	}
 	config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 	tlsConn := tls.Server(conn, &config)
@@ -122,15 +167,28 @@ func upgradeToTLSServer(conn net.Conn) (*tls.Conn, error) {
 	}
 	fmt.Printf("Handshake complete\n")
 	time.Sleep(1 * time.Second)
+	dumpConnState(tlsConn)
 	return tlsConn, nil
 }
 
-func upgradeToTLSClient(conn net.Conn) (*tls.Conn, error) {
+func upgradeToTLSClient(conn net.Conn, first bool) (*tls.Conn, error) {
 	fmt.Printf("Upgrading the connection to TLS Client\n")
-	cert, err := tls.LoadX509KeyPair("certs/client.pem", "certs/client.key")
-	if err != nil {
-		log.Fatalf("client: loadkeys: %s", err)
-		return nil, err
+	var cert tls.Certificate
+	var err error
+	if first {
+		fmt.Printf("Loading %s, %s", clientCert, clientKey)
+		cert, err = tls.LoadX509KeyPair(clientCert, clientKey)
+		if err != nil {
+			log.Fatalf("client: loadkeys: %s", err)
+			return nil, err
+		}
+	} else {
+		fmt.Printf("Loading %s, %s", clientCert1, clientKey1)
+		cert, err = tls.LoadX509KeyPair(clientCert1, clientKey1)
+		if err != nil {
+			log.Fatalf("server: loadkeys: %s", err)
+			return nil, err
+		}
 	}
 	config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 
@@ -142,8 +200,23 @@ func upgradeToTLSClient(conn net.Conn) (*tls.Conn, error) {
 	}
 	fmt.Printf("Handshake complete\n")
 	time.Sleep(1 * time.Second)
-
+	dumpConnState(tlsConn)
 	return tlsConn, nil
+}
+
+func upgradeAgainTLS(nodeConn net.Conn, server bool, data []byte) {
+	fmt.Printf("Connected to %s:%s \n", nodeConn.LocalAddr().String(), nodeConn.RemoteAddr().String())
+	var tlsConn *tls.Conn
+	var err error
+	if server {
+		tlsConn, err = upgradeToTLSServer(nodeConn, false)
+	} else {
+		tlsConn, err = upgradeToTLSClient(nodeConn, false)
+	}
+	if err != nil {
+		return
+	}
+	handleTLSDispatch(tlsConn, data)
 }
 
 // upgradeTLS connects to a target using a regular net.Dial TCP.
@@ -158,18 +231,22 @@ func upgradeTLS(target string, server bool, data []byte) {
 	fmt.Printf("Connected to %s:%s \n", nodeConn.LocalAddr().String(), nodeConn.RemoteAddr().String())
 	var tlsConn *tls.Conn
 	if server {
-		tlsConn, err = upgradeToTLSServer(nodeConn)
+		tlsConn, err = upgradeToTLSServer(nodeConn, true)
 	} else {
-		tlsConn, err = upgradeToTLSClient(nodeConn)
+		tlsConn, err = upgradeToTLSClient(nodeConn, true)
 	}
 	if err != nil {
 		return
 	}
 	handleTLSDispatch(tlsConn, data)
+	//fmt.Printf("Downgrading the connection to TCP")
+
+	//upgradeAgainTLS(nodeConn, server, data)
+	//handleDispatch(nodeConn, data)
 }
 
 func tlsServer(target string) {
-	cert, err := tls.LoadX509KeyPair("certs/server.pem", "certs/server.key")
+	cert, err := tls.LoadX509KeyPair(serverCert, serverKey)
 	if err != nil {
 		log.Fatalf("server: loadkeys: %s", err)
 	}
@@ -231,15 +308,15 @@ func main() {
 	message := os.Getenv("MESSAGE")
 	mode := os.Getenv("MODE")
 
-	// A regular TLS Client which uses tls.Dial to connect to the server's target
-	if mode == "regular_tls_client" {
-		tlsClient(ipport)
+	// A flock TLS Client which uses tls.Dial to connect to the server's target and then connects via tls to another tls server
+	if mode == "flock_tls_client" {
+		tlsClient(ipport, false)
 		return
 	}
 
-	// A regular TLS Server which uses tls.listen to listen to incoming tls connections
-	if mode == "regular_tls_server" {
-		tlsServer(ipport)
+	// A regular TLS Server which uses tls.listen to listen to incoming tls connections and then connects via tls to another client
+	if mode == "flock_tls_server" {
+		tlsClient(ipport, true)
 		return
 	}
 
@@ -255,5 +332,5 @@ func main() {
 		return
 	}
 	// Nothing else set, then revert to a normal tcp client
-	tcp_client(ipport, []byte(message))
+	tcpClient(ipport, []byte(message))
 }

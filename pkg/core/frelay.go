@@ -1,16 +1,16 @@
-package relay
+package core
 
 import (
 	"io"
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/allegro/bigcache/queue"
+	"github.com/clusterlink-net/clusterlink/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
-var clog = logrus.WithField("component", "Serverless-Relay")
+var clog = logrus.WithField("component", "Frelay-core")
 var queueSize = 100
 
 var localhost = "127.0.0.1"
@@ -33,66 +33,14 @@ type Relay struct {
 }
 
 // StartRelay starts the main function of the relay
-func (r *Relay) StartRelay() error {
-	// Start a TCP Server at ip:port
-	// Accept only two connections, one from the client, and one from the gateway
-	// Distinguish the connections, based on the IP. Assume we know the gateway IP
-	clog.Info("Starting relay... Listening to ", r.url, " for connections")
-	acceptor, err := net.Listen("tcp", r.url)
-	if err != nil {
-		clog.Errorln("Error:", err)
-		return err
-	}
-	// loop until signalled to stop
-	for {
-		ac, err := acceptor.Accept()
-		if err != nil {
-			clog.Errorln("Accept error:", err)
-			continue
-		}
-		clog.Info("Accept incoming connection from ", ac.RemoteAddr().String())
-		addr := strings.Split(ac.RemoteAddr().String(), ":")[0]
-		clog.Debug("Comparing ", addr, " and ", r.gwIP)
-		if addr == r.gwIP || addr == localhost {
-			// This is an incoming connection from gateway
-			if r.gatewayConn != nil {
-				clog.Errorln("Preexisting gateway connection still active.")
-				ac.Close()
-				continue
-			}
-			clog.Info("Got a connection from the gateway")
-			r.gatewayConn = ac
-			// Check messages queued
-			go r.drainEgress()
-			if !r.ingressHandler {
-				go r.handleIngress()
-			}
-		} else {
-			// This is an incoming connection from a client
-			if r.clientConn != nil {
-				clog.Errorln("Preexisting client connection still active.")
-				ac.Close()
-				continue
-			}
-			clog.Info("Got a connection from the client")
-			r.clientConn = ac
-			go r.drainIngress()
-			if r.gatewayConn == nil {
-				// If no gateway connection open yet, try reaching target
-				clog.Debug("Trying to reach the target..")
-				conn, err := net.Dial("tcp", r.target)
-				if err != nil {
-					clog.Errorln("Unable to reach target, will be buffering")
-				}
-				r.gatewayConn = conn
-			}
-			go r.handleEgress()
-			if !r.ingressHandler {
-				go r.handleIngress()
-			}
-		}
-	}
-	return nil
+func (r *Relay) StartRelay(parsedCertData *util.ParsedCertData) error {
+	err := r.tlsServer()
+	return err
+}
+
+func (r *Relay) startForwarding(conn1, conn2 net.Conn) {
+	forwarder := newForwarder(conn1, conn2)
+	forwarder.run()
 }
 
 // Starts to emit the messages destined to the gateway
@@ -267,14 +215,8 @@ func (r *Relay) closeConnection() {
 }
 
 // Init initializes the relay
-func (r *Relay) Init(ip, port, target string, loglevel logrus.Level) {
+func (r *Relay) Init(ip, port string, loglevel logrus.Level) {
 	r.url = ip + ":" + port
-	r.target = target
-	r.gwIP = strings.Split(target, ":")[0]
-	r.clientConn = nil
-	r.gatewayConn = nil
-	r.egress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, false)
-	r.ingress = *queue.NewBytesQueue(0, queueSize*maxDataBufferSize, false)
 	clog.Info("Initializing relay for target ", r.target)
 	clog.Logger.SetLevel(loglevel)
 }
