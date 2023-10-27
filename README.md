@@ -12,13 +12,17 @@ However, when two transient jobs/functions running in serverless need to contact
 
 # How does serverless-relay solve this?
 
-The serverless-relay runs as a separate process within a gateway VM for each function/job.
+The serverless-relay runs as a separate process within a VM.
 
 It does the following:
-1) Bind and listen to a specific port, for the job/function to connect and send messages to the remote service. The remote service is already discovered by the gateway. 
+1) Binds and listen to a specific port, for the job/function to connect and send messages to the remote service. The remote service is already discovered by the gateway. 
 2) The relay at one end accepts connection from a func1, and other end accepts connection from func2. Ideally it should validate the func1 & func2 using their certificates. 
 3) When both funcs connect to the relay, an end-to-end connection is established, and funcs upgrade the connection to mTLS, and communicate with each other.
 
+Details :
+1) The relay starts a listener for each {func1, func2} pair communication.
+2) It verifies the functions and manages routing between them.
+   
 ![](serverless-relay.png)
 # Steps to run serverless-relay
 
